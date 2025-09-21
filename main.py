@@ -35,67 +35,64 @@ qclass_mapping = {
 }
 
 
-def create_headers(domains: list[str], recursive: bool = True) -> int:
-    id = get_bits(randint(0, 65535), 16)  # ID
-    qr_opcode_aa_tc_rd_ra_z_rcode = "".join(
-        [
-            "0",  # QR
-            "0000",  # Opcode
-            "0",  # AA
-            "0",  # TC
-            str(1 if recursive else 0),  # RD
-            "0",  # RA
-            "000",  # FUTURE USE
-            "0000",  # RCODE
-        ]
-    )
-    qdcount = get_bits(len(domains), 16)
-    ancount = "0" * 16
-    nscount = "0" * 16
-    arcount = "0" * 16
+def create_headers(domains: list[str], recursive: bool = True) -> bytes:
+    id = randint(0, 2**16).to_bytes(2)  # ID
+    qr_opcode_aa_tc_rd_ra_z_rcode = int(
+        "".join(
+            [
+                "0",  # QR
+                "0000",  # Opcode
+                "0",  # AA
+                "0",  # TC
+                str(1 if recursive else 0),  # RD
+                "0",  # RA
+                "000",  # FUTURE USE
+                "0000",  # RCODE
+            ]
+        ),
+        2,
+    ).to_bytes(2)
+    qdcount = len(domains).to_bytes(2)
+    ancount = int("0" * 16, 2).to_bytes(2)
+    nscount = int("0" * 16, 2).to_bytes(2)
+    arcount = int("0" * 16, 2).to_bytes(2)
 
-    ret = int(id, 2)
+    ret = id
 
     for i in [qr_opcode_aa_tc_rd_ra_z_rcode, qdcount, ancount, nscount, arcount]:
-        ret <<= 16
-        ret |= int(i, 2)
+        ret += i
 
     return ret
 
 
 def get_domain_encoded(domain: str):
-    ret = 0
+    ret = b""
     for part in domain.split("."):
-        ret <<= 8
-        ret |= len(part)
-        for letter in part:
-            ret <<= 8
-            ret |= ord(letter)
-    return ret << 8
+        ret += len(part).to_bytes()
+        ret += part.encode()
+    return ret + b"\x00"
 
 
-def get_qtype_encoded(qtype: str) -> int:
+def get_qtype_encoded(qtype: str) -> bytes:
     try:
-        return qtype_mapping[qtype]
+        return qtype_mapping[qtype].to_bytes()
     except KeyError:
         print("error: qtype inválido")
         exit(1)
 
 
-def get_qclass_encoded(qclass: str) -> int:
+def get_qclass_encoded(qclass: str) -> bytes:
     try:
-        return qclass_mapping[qclass]
+        return qclass_mapping[qclass].to_bytes()
     except KeyError:
         print("error: qclass inválido")
         exit(1)
 
 
-def create_query(domain: int, qtype: int, qclass: int) -> int:
+def create_query(domain: bytes, qtype: bytes, qclass: bytes) -> bytes:
     ret = domain
-    ret <<= 16
-    ret |= qtype
-    ret <<= 16
-    ret |= qclass
+    ret += qtype
+    ret += qclass
     return ret
 
 
@@ -109,8 +106,7 @@ def create_request(
             get_qtype_encoded(qtype),
             get_qclass_encoded(qclass),
         )
-        ret <<= len(get_bits(query))
-        ret |= query
+        ret += query
     return ret
 
 
@@ -144,12 +140,10 @@ def int_to_bytes(i: int) -> bytes:
     return bytes(b)
 
 
-def send_request(request: int, server: tuple[str, int]) -> bytes:
+def send_request(request: bytes, server: tuple[str, int]) -> bytes:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    to_send = int_to_bytes(request)
-
-    sock.sendto(to_send, server)
+    sock.sendto(request, server)
 
     buf = b""
 
