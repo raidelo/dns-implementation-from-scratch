@@ -1,11 +1,12 @@
 from argparse import ArgumentParser
-import re
 from random import randint
+import re
 import socket
 
 SERVER_ADDRESS = re.compile(r"^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:(\d{1,5}))?$")
 DEFAULT_REMOTE_PORT = 53
 
+CHUNK = 64
 
 qtype_mapping = {
     "A": 1,  # a host address
@@ -34,12 +35,8 @@ qclass_mapping = {
 }
 
 
-def bin_to_int(s: str) -> int:
-    return int(s, 2)
-
-
 def create_headers(domains: list[str], recursive: bool = True) -> int:
-    id = get_bits(randint(0, 65535)).zfill(16)  # ID
+    id = get_bits(randint(0, 65535), 16)  # ID
     qr_opcode_aa_tc_rd_ra_z_rcode = "".join(
         [
             "0",  # QR
@@ -52,39 +49,29 @@ def create_headers(domains: list[str], recursive: bool = True) -> int:
             "0000",  # RCODE
         ]
     )
-
-    qdcount = get_bits(len(domains)).zfill(16)
+    qdcount = get_bits(len(domains), 16)
     ancount = "0" * 16
     nscount = "0" * 16
     arcount = "0" * 16
 
-    to_return = int(id, 2)
-    to_return <<= 16
-    to_return |= int(qr_opcode_aa_tc_rd_ra_z_rcode, 2)
-    to_return <<= 16
-    to_return |= int(qdcount, 2)
-    to_return <<= 16
-    to_return |= int(ancount, 2)
-    to_return <<= 16
-    to_return |= int(nscount, 2)
-    to_return <<= 16
-    to_return |= int(arcount, 2)
+    ret = int(id, 2)
 
-    return to_return
+    for i in [qr_opcode_aa_tc_rd_ra_z_rcode, qdcount, ancount, nscount, arcount]:
+        ret <<= 16
+        ret |= int(i, 2)
+
+    return ret
 
 
 def get_domain_encoded(domain: str):
-    to_return = 0
-    parts = domain.split(".")
-
-    for part in parts:
-        length = len(part)
-        to_return <<= 8
-        to_return |= length
+    ret = 0
+    for part in domain.split("."):
+        ret <<= 8
+        ret |= len(part)
         for letter in part:
-            to_return <<= 8
-            to_return |= ord(letter)
-    return to_return << 8
+            ret <<= 8
+            ret |= ord(letter)
+    return ret << 8
 
 
 def get_qtype_encoded(qtype: str) -> int:
@@ -104,55 +91,39 @@ def get_qclass_encoded(qclass: str) -> int:
 
 
 def create_query(domain: int, qtype: int, qclass: int) -> int:
-    to_return = domain
-    to_return <<= 16
-    to_return |= qtype
-    to_return <<= 16
-    to_return |= qclass
-    return to_return
+    ret = domain
+    ret <<= 16
+    ret |= qtype
+    ret <<= 16
+    ret |= qclass
+    return ret
 
 
 def create_request(
-    domains: list[str],
-    qtype: str = "A",
-    qclass: str = "IN",
+    domains: list[str], qtype: str = "A", qclass: str = "IN", recursive: bool = True
 ):
-    to_return = create_headers(domains, True)
-    queries = []
+    ret = create_headers(domains, recursive)
     for domain in domains:
-        domain_encoded = get_domain_encoded(domain)
-        qtype_encoded = get_qtype_encoded(qtype)
-        qclass_encoded = get_qclass_encoded(qclass)
-        query_for_domain = create_query(domain_encoded, qtype_encoded, qclass_encoded)
-        queries.append(query_for_domain)
-    for query in queries:
-        to_return <<= len(get_bits(query))
-        to_return |= query
-    return to_return
+        query = create_query(
+            get_domain_encoded(domain),
+            get_qtype_encoded(qtype),
+            get_qclass_encoded(qclass),
+        )
+        ret <<= len(get_bits(query))
+        ret |= query
+    return ret
 
 
-def send_request(request: int, server: tuple[str, int]) -> int:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    bits = get_bits(request)
-
-    to_send = bytes([int(bits[i : i + 8], 2) for i in range(0, len(bits), 8)])
-
-    print("DataToSend:", to_send)
-
-    sock.sendto(to_send, server)
-
-    return sock.recv(50)
-
-
-def get_bits(data: int) -> str:
-    l_padding = 8
-    binary_format = bin(data).replace("0b", "")
+def get_bits(data: int, left_padding: int | None = None) -> str:
+    bits = bin(data).replace("0b", "")
+    if left_padding:
+        return bits.zfill(left_padding)
+    left_padding = 8
     while True:
-        if len(binary_format) <= l_padding:
-            return binary_format.zfill(l_padding)
+        if len(bits) <= left_padding:
+            return bits.zfill(left_padding)
         else:
-            l_padding += 8
+            left_padding += 8
 
 
 def parse_server(address: str) -> tuple[str, int] | None:
@@ -165,6 +136,43 @@ def parse_server(address: str) -> tuple[str, int] | None:
 
 def parse_response(r: bytes) -> str:
     raise NotImplementedError
+
+
+def int_to_bytes(i: int) -> bytes:
+    b = []
+    while i != 0:
+        b.append(i & 0b11111111)
+        i >>= 8
+    return bytes(b)
+
+
+def send_request(request: int, server: tuple[str, int]) -> bytes:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    to_send = int_to_bytes(request)
+
+    sock.sendto(to_send, server)
+
+    buf = b""
+
+    recvd = sock.recv(CHUNK)
+
+    while len(recvd) != 0:
+        recvd += sock.recv(CHUNK)
+        buf += recvd
+
+    return buf
+
+
+def send_query(
+    server: tuple[str, int],
+    domains: list[str],
+    qtype: str = "A",
+    qclass: str = "IN",
+    recursive: bool = True,
+) -> bytes:
+    req = create_request(domains, qtype, qclass, recursive)
+    return send_request(req, server)
 
 
 def main():
