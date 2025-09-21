@@ -114,28 +114,26 @@ def create_request(
     return ret
 
 
-def get_bits(data: int, left_padding: int | None = None) -> str:
-    bits = bin(data).replace("0b", "")
+def get_bits(integer: int, left_padding: int | None = None) -> str:
+    bits = bin(integer).replace("0b", "")
     if left_padding:
         return bits.zfill(left_padding)
     left_padding = 8
     while True:
-        if len(bits) <= left_padding:
+        if len(bits) == left_padding:
+            return bits
+        elif len(bits) < left_padding:
             return bits.zfill(left_padding)
         else:
             left_padding += 8
 
 
-def parse_server(address: str) -> tuple[str, int] | None:
+def parse_server_string(address: str) -> tuple[str, int] | None:
     match = SERVER_ADDRESS.match(address)
     if match:
         port = match.group(3)
         return (match.group(1), int(port) if port else DEFAULT_REMOTE_PORT)
     return None
-
-
-def parse_response(r: bytes) -> str:
-    raise NotImplementedError
 
 
 def int_to_bytes(i: int) -> bytes:
@@ -158,8 +156,8 @@ def send_request(request: int, server: tuple[str, int]) -> bytes:
     recvd = sock.recv(CHUNK)
 
     while len(recvd) != 0:
-        recvd += sock.recv(CHUNK)
         buf += recvd
+        recvd = sock.recv(CHUNK)
 
     return buf
 
@@ -173,6 +171,10 @@ def send_query(
 ) -> bytes:
     req = create_request(domains, qtype, qclass, recursive)
     return send_request(req, server)
+
+
+def parse_response(r: bytes) -> dict:
+    raise NotImplementedError
 
 
 def main():
@@ -191,7 +193,7 @@ def main():
     args = parser.parse_args()
 
     data = create_request(args.domains, args.type)
-    server = parse_server(args.server)
+    server = parse_server_string(args.server)
 
     if not server:
         print("error: Invalid server address format: {}".format(server))
