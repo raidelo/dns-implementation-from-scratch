@@ -75,7 +75,7 @@ def get_domain_encoded(domain: str):
 
 def get_qtype_encoded(qtype: str) -> bytes:
     try:
-        return qtype_mapping[qtype].to_bytes()
+        return qtype_mapping[qtype].to_bytes(2)
     except KeyError:
         print("error: qtype inválido")
         exit(1)
@@ -83,7 +83,7 @@ def get_qtype_encoded(qtype: str) -> bytes:
 
 def get_qclass_encoded(qclass: str) -> bytes:
     try:
-        return qclass_mapping[qclass].to_bytes()
+        return qclass_mapping[qclass].to_bytes(2)
     except KeyError:
         print("error: qclass inválido")
         exit(1)
