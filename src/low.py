@@ -29,7 +29,7 @@ QCLASS_MAPPING = {
 
 
 def create_headers(domains: list[str], recursive: bool = True) -> bytes:
-    id = randint(0, 2**16).to_bytes(2)  # ID
+    id = randint(0, 2**16 - 1).to_bytes(2)  # ID
     qr_opcode_aa_tc_rd_ra_z_rcode = int(
         "".join(
             [
