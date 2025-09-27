@@ -3,7 +3,12 @@ from random import randint
 import re
 import socket
 
-SERVER_ADDRESS = re.compile(r"^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:(\d{1,5}))?$")
+
+SERVER_ADDRESS = re.compile(
+    r"^((\d{1,2}|1\d{2}|2[0-5]{2})\.){3}(\d{1,2}|1\d{2}|2[0-5]{2})$"
+)
+SERVER_PORT = re.compile(r"^(\d|[1-9]\d{1,3}|[1-5]\d{4}|6[1-5]{2}[1-3][1-5])$")
+
 DEFAULT_REMOTE_PORT = 53
 
 CHUNK = 64
@@ -124,12 +129,32 @@ def get_bits(integer: int, left_padding: int | None = None) -> str:
             left_padding += 8
 
 
-def parse_server_string(address: str) -> tuple[str, int] | None:
-    match = SERVER_ADDRESS.match(address)
-    if match:
-        port = match.group(3)
-        return (match.group(1), int(port) if port else DEFAULT_REMOTE_PORT)
-    return None
+def parse_server_string(address: str) -> dict:
+    address, _, port = address.partition(":")
+    default = {"status": False, "server": None, "port": None}
+
+    server_match = SERVER_ADDRESS.match(address)
+
+    if not server_match:
+        default["server"] = f"Invalid IPv4 format: {address}"
+        return default
+    else:
+        default["server"] = server_match.group()
+
+    if port:
+        port_match = SERVER_PORT.match(port)
+        if not port_match:
+            default["server"] = None
+            default["port"] = f"Invalid port: {port}"
+            return default
+        else:
+            default["port"] = int(port_match.group())
+    else:
+        default["port"] = DEFAULT_REMOTE_PORT
+
+    default["status"] = True
+
+    return default
 
 
 def int_to_bytes(i: int) -> bytes:
@@ -175,7 +200,7 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument("domains", nargs="+")
     parser.add_argument("-s", "--server", default="8.8.8.8:53", dest="server")
-    parser.add_argument("-t", "--type", default="A", dest="type")
+    parser.add_argument("-t", "--qtype", default="A", dest="qtype")
     parser.add_argument(
         "-n",
         "--non-recursive",
@@ -189,14 +214,16 @@ def parse_args():
 def main():
     args = parse_args()
 
-    data = create_request(args.domains, args.type)
-    server = parse_server_string(args.server)
+    s = parse_server_string(args.server)
 
-    if not server:
-        print("error: Invalid server address format: {}".format(server))
+    if not s["status"]:
+        print("error: {}".format(s["server"] or s["port"]))
         exit(1)
 
-    response = send_request(data, server)
+    data = create_request(args.domains, args.qtype)
+
+    response = send_request(data, (s["server"], s["port"]))
+
     print("Received:", response)
 
     response_parsed = parse_response(response)
