@@ -70,6 +70,11 @@ def create_request(
             get_qclass_encoded(qclass),
         )
         ret += query
+    request_len = len(ret)
+    if request_len > 512:
+        raise OverflowError(
+            f"Invalid request length of {request_len} bytes. Maximum length is 512 bytes."
+        )
     return ret
 
 
