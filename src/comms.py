@@ -3,23 +3,17 @@ import socket
 from low import create_request
 
 
-CHUNK = 64
+CHUNK = 65536
+TIMEOUT = 3
 
 
 def send_request(request: bytes, server: tuple[str, int]) -> bytes:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(TIMEOUT)
 
     sock.sendto(request, server)
 
-    buf = b""
-
-    recvd = sock.recv(CHUNK)
-
-    while len(recvd) != 0:
-        buf += recvd
-        recvd = sock.recv(CHUNK)
-
-    return buf
+    return sock.recv(CHUNK)
 
 
 def send_query(
