@@ -100,13 +100,11 @@ def get_qtype_encoded(qtype: str) -> bytes:
     try:
         return QTYPE_MAPPING[qtype].to_bytes(2)
     except KeyError:
-        print("error: qtype inválido")
-        exit(1)
+        raise KeyError(f"Invalid QTYPE: {qtype}")
 
 
 def get_qclass_encoded(qclass: str) -> bytes:
     try:
         return QCLASS_MAPPING[qclass].to_bytes(2)
     except KeyError:
-        print("error: qclass inválido")
-        exit(1)
+        raise KeyError(f"Invalid QCLASS: {qclass}")
