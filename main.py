@@ -177,7 +177,7 @@ def parse_response(r: bytes) -> dict:
     raise NotImplementedError
 
 
-def main():
+def parse_args():
     parser = ArgumentParser()
     parser.add_argument("domains", nargs="+")
     parser.add_argument("-s", "--server", default="8.8.8.8:53", dest="server")
@@ -189,8 +189,11 @@ def main():
         default=False,
         dest="non_recursive",
     )
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+def main():
+    args = parse_args()
 
     data = create_request(args.domains, args.type)
     server = parse_server_string(args.server)
