@@ -108,3 +108,7 @@ def get_qclass_encoded(qclass: str) -> bytes:
         return QCLASS_MAPPING[qclass].to_bytes(2)
     except KeyError:
         raise KeyError(f"Invalid QCLASS: {qclass}")
+
+
+def parse_response(r: bytes) -> dict:
+    raise NotImplementedError

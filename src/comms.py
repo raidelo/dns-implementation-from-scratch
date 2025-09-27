@@ -25,7 +25,3 @@ def send_query(
 ) -> bytes:
     req = create_request(domains, qtype, qclass, recursive)
     return send_request(req, server)
-
-
-def parse_response(r: bytes) -> dict:
-    raise NotImplementedError
