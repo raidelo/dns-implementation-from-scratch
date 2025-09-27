@@ -73,12 +73,22 @@ def create_request(
     return ret
 
 
-def get_domain_encoded(domain: str):
+def get_domain_encoded(domain: str) -> bytes:
     ret = b""
-    for part in domain.split("."):
-        ret += len(part).to_bytes()
-        ret += part.encode()
-    return ret + b"\x00"
+    for sub_domain in domain.split("."):
+        sub_domain_len = len(sub_domain)
+        if sub_domain_len > 63:
+            raise OverflowError(
+                f"Invalid sub-domain length of {sub_domain_len} bytes. Maximum length is 63 bytes."
+            )
+        ret += sub_domain_len.to_bytes() + sub_domain.encode()
+    ret += b"\x00"
+    domain_name_len = len(ret)
+    if domain_name_len > 255:
+        raise OverflowError(
+            f"Invalid domain name length of {domain_name_len} bytes. Maximum length is 255 bytes."
+        )
+    return ret
 
 
 def get_qtype_encoded(qtype: str) -> bytes:
