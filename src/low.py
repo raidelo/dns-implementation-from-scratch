@@ -110,5 +110,68 @@ def get_qclass_encoded(qclass: str) -> bytes:
         raise KeyError(f"Invalid QCLASS: {qclass}")
 
 
-def parse_response(r: bytes) -> dict:
-    raise NotImplementedError
+class ResponseParser:
+    def __init__(self, response: bytes):
+        self.response = response
+
+        self.headers = {}
+
+        self.ptr = 12
+
+        self.question_section = []
+        self.answer_section = []
+        self.authority_section = []
+        self.additional_section = []
+
+        self.parse_headers()
+        self.parse_question_section()
+        self.parse_answer_section()
+        self.parse_authority_section()
+        self.parse_additional_section()
+
+    def parse_headers(self):
+        hb = self.response[:12]
+
+        self.headers["ID"] = int.from_bytes(hb[:2])
+        self.headers["QR"] = hb[2] & 0x10000000 >> 7
+        self.headers["OPCODE"] = hb[2] & 0x01111000 >> 3
+        self.headers["AA"] = hb[2] & 0x00000100 >> 2
+        self.headers["TC"] = hb[2] & 0x00000010 >> 1
+        self.headers["RD"] = hb[2] & 0x00000001
+        self.headers["RA"] = hb[3] & 0x10000000 >> 7
+        self.headers["Z"] = hb[3] & 0x01110000 >> 4
+        self.headers["RCODE"] = hb[3] & 0x00001111
+        self.headers["QDCOUNT"] = int.from_bytes(hb[4:6])
+        self.headers["ANCOUNT"] = int.from_bytes(hb[6:8])
+        self.headers["NSCOUNT"] = int.from_bytes(hb[8:10])
+        self.headers["ARCOUNT"] = int.from_bytes(hb[10:12])
+
+    def parse_question_section(self):
+        for _i in range(0, self.headers["QDCOUNT"] + 1):
+            qname: list[bytes] = []
+            while True:
+                label_length = self.response[self.ptr]
+                if label_length == b"\x00":
+                    self.ptr += 1
+                    self.question_section.append(
+                        {
+                            "qname": b".".join(qname),
+                            "qtype": self.response[self.ptr : self.ptr + 2],
+                            "qclass": self.response[self.ptr + 2 : self.ptr + 4],
+                        }
+                    )
+                    self.ptr += 4
+                    break
+                self.ptr += 1
+                label = self.response[self.ptr : self.ptr + label_length]
+                qname.append(label)
+                self.ptr = self.ptr + label_length
+
+    def parse_answer_section(self) -> dict:
+        raise NotImplementedError
+
+    def parse_authority_section(self) -> dict:
+        raise NotImplementedError
+
+    def parse_additional_section(self) -> dict:
+        raise NotImplementedError

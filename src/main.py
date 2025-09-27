@@ -1,6 +1,6 @@
 from cli import parse_args
 from comms import send_query
-from low import parse_response
+from low import ResponseParser
 from parsing import parse_server_string
 
 
@@ -23,7 +23,7 @@ def main():
 
     print("Received:", response)
 
-    response_parsed = parse_response(response)
+    response_parsed = ResponseParser(response)
 
 
 if __name__ == "__main__":
