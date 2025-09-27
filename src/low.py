@@ -50,19 +50,13 @@ def create_headers(domains: list[str], recursive: bool = True) -> bytes:
     nscount = int("0" * 16, 2).to_bytes(2)
     arcount = int("0" * 16, 2).to_bytes(2)
 
-    ret = id
-
-    for i in [qr_opcode_aa_tc_rd_ra_z_rcode, qdcount, ancount, nscount, arcount]:
-        ret += i
-
-    return ret
+    return b"".join(
+        [id, qr_opcode_aa_tc_rd_ra_z_rcode, qdcount, ancount, nscount, arcount]
+    )
 
 
 def create_query(domain: bytes, qtype: bytes, qclass: bytes) -> bytes:
-    ret = domain
-    ret += qtype
-    ret += qclass
-    return ret
+    return b"".join([domain, qtype, qclass])
 
 
 def create_request(
@@ -101,11 +95,3 @@ def get_qclass_encoded(qclass: str) -> bytes:
     except KeyError:
         print("error: qclass inválido")
         exit(1)
-
-
-def int_to_bytes(i: int) -> bytes:
-    b = []
-    while i != 0:
-        b.append(i & 0b11111111)
-        i >>= 8
-    return bytes(b)
