@@ -155,9 +155,14 @@ class ResponseParser:
 
         self.question_section += qname_qtype_qclass
 
+    def parse_answer_section(self):
+        last_index, resource_records = get_resource_records(
+            self.response, self.ptr, self.headers["ANCOUNT"]
+        )
 
-    def parse_answer_section(self) -> dict:
-        raise NotImplementedError
+        self.ptr = last_index
+
+        self.answer_section += resource_records
 
     def parse_authority_section(self) -> dict:
         raise NotImplementedError
@@ -191,3 +196,31 @@ def get_qname_qtype_qclass(
             qname.append(label)
 
     return ptr, records
+
+
+def get_resource_records(
+    b: bytes, ptr: int, ammount: int
+) -> tuple[int, list[dict[str, bytes]]]:
+    resource_records = []
+    for _i in range(0, ammount):
+        record = {}
+
+        ptr, name_type_class = get_qname_qtype_qclass(b, ptr, 1)
+
+        record["name"] = name_type_class[0]["qname"]
+        record["type"] = name_type_class[0]["qtype"]
+        record["class"] = name_type_class[0]["qclass"]
+
+        record["ttl"] = b[ptr : ptr + 4]
+        ptr += 4
+
+        record["rdlength"] = b[ptr : ptr + 2]
+        rdlength = int.from_bytes(record["rdlength"])
+        ptr += 2
+
+        record["rdata"] = b[ptr : ptr + rdlength]
+        ptr += rdlength
+
+        resource_records.append(record)
+
+    return ptr, resource_records
