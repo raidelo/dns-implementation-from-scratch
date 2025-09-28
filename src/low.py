@@ -147,25 +147,14 @@ class ResponseParser:
         self.headers["ARCOUNT"] = int.from_bytes(hb[10:12])
 
     def parse_question_section(self):
-        for _i in range(0, self.headers["QDCOUNT"]):
-            qname: list[bytes] = []
-            while True:
-                label_length = self.response[self.ptr]
-                if label_length == 0:
-                    self.ptr += 1
-                    self.question_section.append(
-                        {
-                            "qname": b".".join(qname),
-                            "qtype": self.response[self.ptr : self.ptr + 2],
-                            "qclass": self.response[self.ptr + 2 : self.ptr + 4],
-                        }
-                    )
-                    self.ptr += 4
-                    break
-                self.ptr += 1
-                label = self.response[self.ptr : self.ptr + label_length]
-                qname.append(label)
-                self.ptr = self.ptr + label_length
+        last_index, qname_qtype_qclass = get_qname_qtype_qclass(
+            self.response, self.ptr, self.headers["QDCOUNT"]
+        )
+
+        self.ptr = last_index
+
+        self.question_section += qname_qtype_qclass
+
 
     def parse_answer_section(self) -> dict:
         raise NotImplementedError
@@ -175,3 +164,30 @@ class ResponseParser:
 
     def parse_additional_section(self) -> dict:
         raise NotImplementedError
+
+
+def get_qname_qtype_qclass(
+    b: bytes, ptr: int, ammount: int
+) -> tuple[int, list[dict[str, bytes]]]:
+    records = []
+    for _i in range(0, ammount):
+        qname: list[bytes] = []
+        while True:
+            label_length = b[ptr]
+            if label_length == 0:
+                ptr += 1
+                records.append(
+                    {
+                        "qname": b".".join(qname),
+                        "qtype": b[ptr : ptr + 2],
+                        "qclass": b[ptr + 2 : ptr + 4],
+                    }
+                )
+                ptr += 4
+                break
+            ptr += 1
+            label = b[ptr : ptr + label_length]
+            ptr += label_length
+            qname.append(label)
+
+    return ptr, records
