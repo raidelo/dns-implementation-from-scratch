@@ -208,6 +208,7 @@ def get_qname_qtype_qclass(
                 "qclass": b[ptr + 2 : ptr + 4],
             }
         )
+        ptr += 4
 
     return ptr, records
 
