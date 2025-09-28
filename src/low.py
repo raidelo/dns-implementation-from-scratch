@@ -131,8 +131,8 @@ class ResponseParser:
         self.parse_headers()
         self.parse_question_section()
         self.parse_answer_section()
-        self.parse_authority_section()
-        self.parse_additional_section()
+        # self.parse_authority_section()
+        # self.parse_additional_section()
 
     def parse_headers(self):
         self.raw_headers = self.response[:12]

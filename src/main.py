@@ -1,6 +1,8 @@
+from pprint import pprint
+
 from cli import parse_args
-from comms import send_query
-from low import ResponseParser
+from comms import send_request
+from low import ResponseParser, create_request
 from parsing import parse_server_string
 
 
@@ -13,17 +15,34 @@ def main():
         print("error: {}".format(s["server"] or s["port"]))
         exit(1)
 
-    response = send_query(
-        (s["server"], s["port"]),
+    req = create_request(
         args.domains,
         args.qtype,
         args.qclass,
         args.non_recursive,
     )
 
-    print("Received:", response)
+    resp = send_request(req, (s["server"], s["port"]))
 
-    response_parsed = ResponseParser(response)
+    # Query debugging
+    req = ResponseParser(req)
+    pprint(req.raw_headers)
+    pprint(req.headers)
+    pprint(req.raw_question_section)
+    pprint(req.question_section)
+
+    # Response debugging
+    resp = ResponseParser(resp)
+    pprint(resp.raw_headers)
+    pprint(resp.headers)
+    pprint(resp.raw_question_section)
+    pprint(resp.question_section)
+    pprint(resp.raw_answer_section)
+    pprint(resp.answer_section)
+    pprint(resp.raw_authority_section)
+    pprint(resp.authority_section)
+    pprint(resp.raw_additional_section)
+    pprint(resp.additional_section)
 
 
 if __name__ == "__main__":
