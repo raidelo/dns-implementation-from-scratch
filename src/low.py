@@ -147,11 +147,11 @@ class ResponseParser:
         self.headers["ARCOUNT"] = int.from_bytes(hb[10:12])
 
     def parse_question_section(self):
-        for _i in range(0, self.headers["QDCOUNT"] + 1):
+        for _i in range(0, self.headers["QDCOUNT"]):
             qname: list[bytes] = []
             while True:
                 label_length = self.response[self.ptr]
-                if label_length == b"\x00":
+                if label_length == 0:
                     self.ptr += 1
                     self.question_section.append(
                         {
