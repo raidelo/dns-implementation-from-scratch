@@ -115,13 +115,18 @@ class ResponseParser:
         self.response = response
 
         self.headers = {}
+        self.raw_headers = b""
 
         self.ptr = 12
 
         self.question_section = []
+        self.raw_question_section = b""
         self.answer_section = []
+        self.raw_answer_section = b""
         self.authority_section = []
+        self.raw_authority_section = b""
         self.additional_section = []
+        self.raw_additional_section = b""
 
         self.parse_headers()
         self.parse_question_section()
@@ -130,7 +135,8 @@ class ResponseParser:
         self.parse_additional_section()
 
     def parse_headers(self):
-        hb = self.response[:12]
+        self.raw_headers = self.response[:12]
+        hb = self.raw_headers
 
         self.headers["ID"] = int.from_bytes(hb[:2])
         self.headers["QR"] = hb[2] & 0x10000000 >> 7
@@ -151,6 +157,8 @@ class ResponseParser:
             self.response, self.ptr, self.headers["QDCOUNT"]
         )
 
+        self.raw_question_section = self.response[self.ptr : last_index]
+
         self.ptr = last_index
 
         self.question_section += qname_qtype_qclass
@@ -159,6 +167,8 @@ class ResponseParser:
         last_index, resource_records = get_resource_records(
             self.response, self.ptr, self.headers["ANCOUNT"]
         )
+
+        self.raw_answer_section = self.response[self.ptr : last_index]
 
         self.ptr = last_index
 
