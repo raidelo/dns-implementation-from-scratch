@@ -15,11 +15,13 @@ def main():
         print("error: {}".format(s["server"] or s["port"]))
         exit(1)
 
+    recursive = not args.non_recursive
+
     req = create_request(
         args.domains,
         args.qtype,
         args.qclass,
-        args.non_recursive,
+        recursive,
     )
 
     resp = send_request(req, (s["server"], s["port"]))
