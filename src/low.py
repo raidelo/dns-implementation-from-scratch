@@ -182,29 +182,33 @@ class ResponseParser:
         raise NotImplementedError
 
 
+def get_qname(b: bytes, ptr: int) -> tuple[int, bytes]:
+    qname: list[bytes] = []
+    while True:
+        label_length = b[ptr]
+        if label_length == 0:
+            ptr += 1
+            return ptr, b".".join(qname)
+        else:
+            ptr += 1
+            label = b[ptr : ptr + label_length]
+            ptr += label_length
+            qname.append(label)
+
+
 def get_qname_qtype_qclass(
     b: bytes, ptr: int, ammount: int
 ) -> tuple[int, list[dict[str, bytes]]]:
     records = []
     for _i in range(0, ammount):
-        qname: list[bytes] = []
-        while True:
-            label_length = b[ptr]
-            if label_length == 0:
-                ptr += 1
-                records.append(
-                    {
-                        "qname": b".".join(qname),
-                        "qtype": b[ptr : ptr + 2],
-                        "qclass": b[ptr + 2 : ptr + 4],
-                    }
-                )
-                ptr += 4
-                break
-            ptr += 1
-            label = b[ptr : ptr + label_length]
-            ptr += label_length
-            qname.append(label)
+        ptr, qname = get_qname(b, ptr)
+        records.append(
+            {
+                "qname": qname,
+                "qtype": b[ptr : ptr + 2],
+                "qclass": b[ptr + 2 : ptr + 4],
+            }
+        )
 
     return ptr, records
 
