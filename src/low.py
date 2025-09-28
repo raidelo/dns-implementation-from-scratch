@@ -1,4 +1,5 @@
 from random import randint
+from collections import OrderedDict
 
 
 QTYPE_MAPPING = {
@@ -114,7 +115,7 @@ class ResponseParser:
     def __init__(self, response: bytes):
         self.response = response
 
-        self.headers = {}
+        self.headers = OrderedDict()
         self.raw_headers = b""
 
         self.ptr = 12
