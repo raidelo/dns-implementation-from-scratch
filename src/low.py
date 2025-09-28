@@ -188,6 +188,11 @@ def get_qname(b: bytes, ptr: int) -> tuple[int, bytes]:
         if label_length == 0:
             ptr += 1
             return ptr, b".".join(qname)
+        elif label_length == 192:
+            ptr += 1
+            _, pointed_name = get_qname(b, b[ptr])
+            ptr += 1
+            return ptr, b".".join((b".".join(qname), pointed_name))
         else:
             ptr += 1
             label = b[ptr : ptr + label_length]
