@@ -189,6 +189,12 @@ def get_qname(b: bytes, ptr: int) -> tuple[int, bytes]:
         if label_length == 0:
             ptr += 1
             return ptr, b".".join(qname)
+        elif label_length & 0b11000000 == 0b11000000:
+            _, pointed_name = get_qname(
+                b, (label_length & 0x00111111) << 8 | b[ptr + 1]
+            )
+            ptr += 2
+            return ptr, b".".join((b".".join(qname), pointed_name))
         else:
             ptr += 1
             label = b[ptr : ptr + label_length]
@@ -209,6 +215,7 @@ def get_qname_qtype_qclass(
                 "qclass": b[ptr + 2 : ptr + 4],
             }
         )
+        ptr += 4
 
     return ptr, records
 
