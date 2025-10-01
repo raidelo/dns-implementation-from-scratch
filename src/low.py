@@ -184,22 +184,22 @@ class ResponseParser:
 
 def get_qname(b: bytes, ptr: int) -> tuple[int, bytes]:
     qname: list[bytes] = []
+    real_offset = ptr
     while True:
         label_length = b[ptr]
         if label_length == 0:
-            ptr += 1
-            return ptr, b".".join(qname)
+            return real_offset + 1, b".".join(qname)
         elif label_length & 0b11000000 == 0b11000000:
-            _, pointed_name = get_qname(
-                b, (label_length & 0x00111111) << 8 | b[ptr + 1]
-            )
-            ptr += 2
-            return ptr, b".".join((b".".join(qname), pointed_name))
+            ptr = (label_length & 0x00111111) << 8 | b[ptr + 1]
+            real_offset += 1
+            continue
         else:
             ptr += 1
             label = b[ptr : ptr + label_length]
             ptr += label_length
             qname.append(label)
+            if ptr > real_offset:
+                real_offset = ptr
 
 
 def get_qname_qtype_qclass(
